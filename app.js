@@ -1,8 +1,9 @@
 /* 个人作品集 · 交互脚本（零依赖）
    ------------------------------------------------------------
-   这里只放占位内容，没有编造任何项目或经历。
    替换位置：
-     1) PROJECTS  —— 每个项目的 title / desc / category / art / link
+     1) PROJECTS  —— title / desc / category / art / link
+        link 填完整网址（https://...）：卡片右上角出现「打开链接 ↗」，
+        详情弹层里也会出现「打开项目链接 ↗」；留空则不显示。
      2) CATEGORIES —— 筛选分类
      3) index.html —— 名字、自我介绍、邮箱
    art 可选 art-1 ~ art-6，是纯 CSS 封面，无需准备图片。
@@ -20,8 +21,8 @@ const CATEGORIES = [
 const PROJECTS = [
   { id: 1, title: '项目 01', category: 'web',    art: 'art-1', desc: '[ 一句话介绍这个项目 ]', link: '' },
   { id: 2, title: '项目 02', category: 'visual', art: 'art-2', desc: '[ 一句话介绍这个项目 ]', link: '' },
-  { id: 3, title: '项目 03', category: 'web',    art: 'art-3', desc: '[ 一句话介绍这个项目 ]', link: '' },
-  { id: 4, title: '项目 04', category: 'other',  art: 'art-4', desc: '[ 一句话介绍这个项目 ]', link: '' },
+  { id: 3, title: '项目 03', category: 'web',    art: 'art-3', desc: '[ 一句话介绍这个项目 ]', link: 'https://pan.quark.cn/s/756f5b519c73' },
+  { id: 4, title: '项目 04', category: 'other',  art: 'art-4', desc: '[ 网盘链接 ]', link: 'https://pan.quark.cn/s/756f5b519c73' },
   { id: 5, title: '项目 05', category: 'visual', art: 'art-5', desc: '[ 一句话介绍这个项目 ]', link: '' },
   { id: 6, title: '项目 06', category: 'other',  art: 'art-6', desc: '[ 一句话介绍这个项目 ]', link: '' }
 ];
@@ -40,7 +41,6 @@ function coverHTML(p, index) {
     <div class="cover ${p.art}">
       <div class="cover-inner"></div>
       <span class="cover-num">${String(index + 1).padStart(2, '0')}</span>
-      <span class="cover-hint" aria-hidden="true">↗</span>
     </div>`;
 }
 
@@ -54,18 +54,26 @@ function renderFilters(active) {
 
 function renderCards(filter = 'all') {
   const list = filter === 'all' ? PROJECTS : PROJECTS.filter(p => p.category === filter);
-  grid.innerHTML = list.map((p, i) => `
-    <button class="work-card" type="button" data-id="${p.id}"
-            style="animation-delay:${PROJECTS.indexOf(p) * 60}ms" aria-label="查看项目详情：${p.title}">
-      ${coverHTML(p, PROJECTS.indexOf(p))}
-      <div class="work-info">
-        <div>
-          <h3>${p.title}</h3>
-          <p class="ph">${p.desc}</p>
+  grid.innerHTML = list.map(p => {
+    const index = PROJECTS.indexOf(p);
+    const link = p.link
+      ? `<a class="card-link" href="${p.link}" target="_blank" rel="noopener noreferrer" aria-label="打开 ${p.title} 的项目链接">打开链接 ↗</a>`
+      : '';
+    return `
+    <div class="work-card" style="animation-delay:${index * 60}ms">
+      <button class="card-hit" type="button" data-id="${p.id}" aria-label="查看项目详情：${p.title}">
+        ${coverHTML(p, index)}
+        <div class="work-info">
+          <div>
+            <h3>${p.title}</h3>
+            <p class="ph">${p.desc}</p>
+          </div>
+          <span class="work-tag">${labelOf(p.category)}</span>
         </div>
-        <span class="work-tag">${labelOf(p.category)}</span>
-      </div>
-    </button>`).join('');
+      </button>
+      ${link}
+    </div>`;
+  }).join('');
   empty.hidden = list.length > 0;
 }
 
@@ -81,6 +89,7 @@ renderCards('all');
 
 /* ---------- 详情弹层 ---------- */
 const modal = document.getElementById('projectModal');
+const modalLink = document.getElementById('modalLink');
 let lastFocused = null;
 
 function openModal(id) {
@@ -94,6 +103,14 @@ function openModal(id) {
   document.getElementById('modalTitle').textContent = p.title;
   document.getElementById('modalDesc').textContent = p.desc;
 
+  if (p.link) {
+    modalLink.href = p.link;
+    modalLink.hidden = false;
+  } else {
+    modalLink.hidden = true;
+    modalLink.removeAttribute('href');
+  }
+
   modal.hidden = false;
   document.body.classList.add('modal-open');
   modal.querySelector('.modal-close').focus();
@@ -106,8 +123,8 @@ function closeModal() {
 }
 
 grid.addEventListener('click', e => {
-  const card = e.target.closest('.work-card');
-  if (card) openModal(card.dataset.id);
+  const hit = e.target.closest('.card-hit');
+  if (hit) openModal(hit.dataset.id);
 });
 modal.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) closeModal();
